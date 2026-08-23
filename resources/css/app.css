@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root { color-scheme: light; }
+    :root.dark { @apply bg-stone-950 text-stone-100; color-scheme: dark; }
+    html { @apply bg-paper font-serif text-ink antialiased dark:bg-stone-950 dark:text-stone-100; }
+    body { @apply min-h-screen bg-paper dark:bg-stone-950; }
+    ::selection { @apply bg-claret text-white; }
+    h1, h2, h3 { text-wrap: balance; }
+    a, button { @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-claret; }
+}
+
+@layer components {
+    .paper-texture {
+        background-image: radial-gradient(rgba(70, 55, 35, .08) .7px, transparent .7px);
+        background-size: 7px 7px;
+    }
+    .masthead { @apply border-b-4 border-double border-stone-800 bg-[#ebe2cf] dark:border-stone-300 dark:bg-stone-900; }
+    .wordmark { @apply text-2xl font-black uppercase tracking-[.18em] text-stone-950 dark:text-white; }
+    .brand-logo { @apply h-7 w-auto object-contain transition sm:h-8 dark:invert; }
+    .nav-link { @apply border-b-2 border-transparent px-1 py-2 text-xs font-bold uppercase tracking-[.12em] text-stone-700 hover:border-claret hover:text-claret dark:text-stone-300; }
+    .nav-link-active { @apply border-claret text-claret dark:text-red-300; }
+    .eyebrow { @apply text-xs font-bold uppercase tracking-[.2em] text-claret dark:text-red-300; }
+    .display-title { @apply text-4xl font-black leading-[.95] tracking-[-.035em] sm:text-6xl lg:text-7xl; }
+    .page-title { @apply text-3xl font-black tracking-[-.025em] sm:text-4xl; }
+    .lede { @apply text-lg leading-8 text-stone-700 dark:text-stone-300; }
+    .rule { @apply border-t border-stone-400 dark:border-stone-600; }
+    .panel { @apply border border-stone-700 bg-[#faf6ec] p-5 shadow-print dark:border-stone-500 dark:bg-stone-900 dark:shadow-none; }
+    .panel-flat { @apply border border-stone-400 bg-[#faf6ec] dark:border-stone-700 dark:bg-stone-900; }
+    .button { @apply inline-flex min-h-10 items-center justify-center border border-stone-900 px-4 py-2 text-sm font-bold uppercase tracking-[.1em] transition disabled:cursor-not-allowed disabled:opacity-50 dark:border-stone-200; }
+    .button-primary { @apply button bg-claret text-white hover:bg-red-950 dark:bg-red-800 dark:hover:bg-red-700; }
+    .button-secondary { @apply button bg-transparent text-stone-900 hover:bg-stone-900 hover:text-white dark:text-stone-100 dark:hover:bg-stone-100 dark:hover:text-stone-900; }
+    .button-quiet { @apply inline-flex items-center text-sm font-bold text-claret underline decoration-1 underline-offset-4 hover:text-red-950 dark:text-red-300; }
+    .field { @apply w-full border border-stone-500 bg-[#fffdf8] px-3 py-2.5 font-serif text-stone-950 placeholder:text-stone-400 focus:border-claret focus:ring-claret dark:border-stone-600 dark:bg-stone-950 dark:text-white; }
+    .label { @apply mb-1.5 block text-xs font-bold uppercase tracking-[.12em] text-stone-700 dark:text-stone-300; }
+    .field-error { @apply mt-1 text-sm font-bold text-red-800 dark:text-red-300; }
+    .badge { @apply inline-flex border border-stone-400 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:border-stone-600 dark:text-stone-300; }
+    .table-head { @apply border-b-2 border-stone-800 text-left text-xs font-bold uppercase tracking-[.12em] dark:border-stone-300; }
+    .flash { @apply mb-5 border-l-4 border-green-800 bg-green-50 px-4 py-3 text-sm font-bold text-green-900 dark:bg-green-950 dark:text-green-100; }
+    .error-box { @apply mb-5 border-l-4 border-red-800 bg-red-50 px-4 py-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100; }
+    .modal { @apply m-auto w-[min(92vw,42rem)] border border-stone-800 bg-paper p-0 text-ink shadow-2xl backdrop:bg-stone-950/70 dark:border-stone-400 dark:bg-stone-900 dark:text-stone-100; }
+    .modal-body { @apply p-6 sm:p-8; }
+}
+
+[data-loading='true'] { @apply opacity-60; }

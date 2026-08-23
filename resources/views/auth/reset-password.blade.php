@@ -1,0 +1,5 @@
+@extends('layouts.guest')
+@section('title', 'Choose a password — LetraPress')
+@section('content')
+<div class="panel"><p class="eyebrow">Account recovery</p><h1 class="page-title mt-2">Choose a new password</h1><form class="mt-7 space-y-5" method="POST" action="{{ route('password.store') }}">@csrf<input type="hidden" name="token" value="{{ $request->route('token') }}"><div><label class="label" for="email">Email address</label><input class="field" id="email" name="email" type="email" value="{{ old('email', $request->email) }}" required autofocus>@error('email')<p class="field-error">{{ $message }}</p>@enderror</div><div><label class="label" for="password">New password</label><input class="field" id="password" name="password" type="password" required autocomplete="new-password">@error('password')<p class="field-error">{{ $message }}</p>@enderror</div><div><label class="label" for="password_confirmation">Repeat password</label><input class="field" id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password"></div><button class="button-primary w-full" type="submit">Save new password</button></form></div>
+@endsection
