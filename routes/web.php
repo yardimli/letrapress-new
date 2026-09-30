@@ -41,6 +41,10 @@ Route::middleware('auth')->group(function () {
     Route::prefix('ajax')->group(function () {
         Route::get('/journalists', [DirectoryController::class, 'journalists'])->name('ajax.journalists');
         Route::get('/outlets', [DirectoryController::class, 'outlets'])->name('ajax.outlets');
+        Route::get('/directory/human-status', [DirectoryController::class, 'humanStatus'])->name('ajax.directory.human-status');
+        Route::post('/directory/human-verify', [DirectoryController::class, 'verifyHuman'])->middleware('throttle:10,1')->name('ajax.directory.human-verify');
+        Route::get('/directory/journalists/{journalist}', [DirectoryController::class, 'journalistDetails'])->middleware('throttle:60,1')->name('ajax.directory.journalist');
+        Route::get('/directory/outlets/{outlet}', [DirectoryController::class, 'outletDetails'])->middleware('throttle:60,1')->name('ajax.directory.outlet');
         Route::post('/directory/contact-list', [DirectoryController::class, 'addToList'])->name('ajax.directory.add');
         Route::apiResource('contact-lists', ContactListController::class)->parameters(['contact-lists' => 'contactList']);
         Route::delete('/contact-lists/{contactList}/member', [ContactListController::class, 'detach'])->name('contact-lists.detach');

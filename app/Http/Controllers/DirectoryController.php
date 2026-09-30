@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DirectoryController extends Controller
@@ -79,6 +80,107 @@ class DirectoryController extends Controller
         return response()->json(['message' => 'Added to contact list.']);
     }
 
+    public function humanStatus(Request $request): JsonResponse
+    {
+        return response()->json(['verified' => $request->session()->get('directory_human_verified') === true]);
+    }
+
+    public function verifyHuman(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'slider' => ['required', 'integer', 'min:100', 'max:100'],
+        ]);
+
+        $request->session()->put('directory_human_verified', true);
+        $request->session()->save();
+
+        return response()->json(['verified' => true]);
+    }
+
+    public function journalistDetails(Request $request, int $journalist): JsonResponse
+    {
+        $this->requireHumanVerification($request);
+
+        $record = Journalist::query()
+            ->whereIn('user_id', [1, $request->user()->id])
+            ->with(['j_title', 'j_cities', 'j_countries', 'j_media_types', 'j_topics', 'j_languages', 'j_social_medias'])
+            ->findOrFail($journalist);
+
+        $outlet = $record->outlet_id
+            ? Outlet::query()->select(['id', 'outlet_name', 'outlet_url'])->find($record->outlet_id)
+            : null;
+
+        return response()->json([
+            'kind' => 'journalist',
+            'id' => $record->id,
+            'name' => $record->journalist_name,
+            'first_name' => $record->first_name,
+            'last_name' => $record->last_name,
+            'picture_url' => $record->journalist_picture_url,
+            'email' => $record->email,
+            'phone' => $record->phone,
+            'score' => $record->influence_score,
+            'state' => $record->state,
+            'title' => $record->j_title?->title,
+            'city' => $record->j_cities?->city,
+            'country' => $record->j_countries?->country,
+            'media_type' => $record->j_media_types?->outlet_type,
+            'outlet' => $outlet,
+            'topics' => $record->j_topics->pluck('topic')->filter()->values(),
+            'languages' => $record->j_languages->pluck('language')->filter()->values(),
+            'social_links' => $record->j_social_medias->map(fn ($social) => [
+                'type' => $social->social_type,
+                'url' => $social->social_link,
+            ])->values(),
+            'contact_lists' => ContactList::query()
+                ->where('user_id', $request->user()->id)
+                ->whereHas('journalists', fn (Builder $query) => $query->where('prowly_journalists.id', $record->id))
+                ->orderBy('name')->pluck('name')->values(),
+        ]);
+    }
+
+    public function outletDetails(Request $request, int $outlet): JsonResponse
+    {
+        $this->requireHumanVerification($request);
+
+        $record = Outlet::query()
+            ->whereIn('user_id', [1, $request->user()->id])
+            ->with(['j_cities', 'j_countries', 'j_media_types', 'j_topics', 'j_languages', 'j_social_medias'])
+            ->findOrFail($outlet);
+
+        return response()->json([
+            'kind' => 'outlet',
+            'id' => $record->id,
+            'name' => $record->outlet_name,
+            'picture_url' => $record->outlet_picture_url,
+            'website' => $record->outlet_url,
+            'email' => $record->email,
+            'phone' => $record->phone,
+            'score' => $record->influence_score,
+            'state' => $record->state,
+            'city' => $record->j_cities?->city,
+            'country' => $record->j_countries?->country,
+            'media_type' => $record->j_media_types?->outlet_type,
+            'topics' => $record->j_topics->pluck('topic')->filter()->values(),
+            'languages' => $record->j_languages->pluck('language')->filter()->values(),
+            'social_links' => $record->j_social_medias->map(fn ($social) => [
+                'type' => $social->social_type,
+                'url' => $social->social_link,
+            ])->values(),
+            'journalists' => Journalist::query()->where('outlet_id', $record->id)
+                ->orderByDesc('influence_score')->limit(12)->get(['id', 'journalist_name', 'influence_score'])
+                ->map(fn (Journalist $journalist) => [
+                    'id' => $journalist->id,
+                    'name' => $journalist->journalist_name,
+                    'score' => $journalist->influence_score,
+                ])->values(),
+            'contact_lists' => ContactList::query()
+                ->where('user_id', $request->user()->id)
+                ->whereHas('outlets', fn (Builder $query) => $query->where('prowly_outlets.id', $record->id))
+                ->orderBy('name')->pluck('name')->values(),
+        ]);
+    }
+
     private function pageData(Request $request, string $kind): array
     {
         $counts = $this->cache->filterCounts($request->user()->id, $kind);
@@ -129,7 +231,7 @@ class DirectoryController extends Controller
             $recordsTotal = (int) $cached['records_total'];
             $cappedTotal = min($recordsTotal, self::RESULT_LIMIT);
             $page = (int) $cached['page'];
-            $items = collect($cached['items']);
+            $items = $this->hidePrivateDirectoryFields(collect($cached['items']));
         } else {
             $recordsTotal = (clone $query)->reorder()->count();
             $cappedTotal = min($recordsTotal, self::RESULT_LIMIT);
@@ -138,6 +240,7 @@ class DirectoryController extends Controller
             $offset = ($page - 1) * $perPage;
             $take = min($perPage, max(0, self::RESULT_LIMIT - $offset));
             $items = $take > 0 ? $query->offset($offset)->limit($take)->get() : collect();
+            $items = $this->hidePrivateDirectoryFields($items);
             $this->cache->writeResult($cachePath, [
                 'records_total' => $recordsTotal,
                 'page' => $page,
@@ -164,5 +267,23 @@ class DirectoryController extends Controller
             $labelKey => $item['label'],
             'record_count' => $item['count'],
         ]);
+    }
+
+    private function requireHumanVerification(Request $request): void
+    {
+        abort_unless($request->session()->get('directory_human_verified') === true, 403, 'Please complete the human check first.');
+    }
+
+    private function hidePrivateDirectoryFields(Collection $items): Collection
+    {
+        return $items->map(function ($item) {
+            if (is_array($item)) {
+                unset($item['email'], $item['phone']);
+
+                return $item;
+            }
+
+            return $item->makeHidden(['email', 'phone']);
+        });
     }
 }

@@ -110,6 +110,40 @@ class WorkspaceTest extends TestCase
         $this->assertTrue(collect($files)->contains(fn ($file) => str_contains($file, 'country-all_media-all_topic-all_language-all_pagesize-24_page-1')));
     }
 
+    public function test_directory_list_hides_private_contact_fields_until_human_check(): void
+    {
+        $user = User::factory()->create();
+        $journalistId = DB::table('prowly_journalists')->insertGetId([
+            'user_id' => $user->id,
+            'journalist_name' => 'Nova Reed',
+            'influence_score' => 712,
+            'email' => 'nova@example.test',
+            'phone' => '+1 555 0100',
+        ]);
+        DB::table('prowly_social_medias')->insert([
+            'journalist_id' => $journalistId,
+            'social_type' => 'Bluesky',
+            'social_link' => 'https://bsky.app/profile/nova.example',
+        ]);
+
+        $directory = $this->actingAs($user)->getJson('/ajax/journalists')->assertOk();
+        $this->assertArrayNotHasKey('email', $directory->json('data.0'));
+        $this->assertArrayNotHasKey('phone', $directory->json('data.0'));
+
+        $this->actingAs($user)->getJson('/ajax/directory/journalists/'.$journalistId)
+            ->assertForbidden();
+        $this->actingAs($user)->postJson('/ajax/directory/human-verify', ['slider' => 99])
+            ->assertUnprocessable();
+        $this->actingAs($user)->postJson('/ajax/directory/human-verify', ['slider' => 100])
+            ->assertOk()->assertJsonPath('verified', true);
+
+        $this->actingAs($user)->getJson('/ajax/directory/journalists/'.$journalistId)
+            ->assertOk()
+            ->assertJsonPath('email', 'nova@example.test')
+            ->assertJsonPath('phone', '+1 555 0100')
+            ->assertJsonPath('social_links.0.type', 'Bluesky');
+    }
+
     public function test_press_release_and_newsroom_records_are_user_scoped(): void
     {
         $user = User::factory()->create();

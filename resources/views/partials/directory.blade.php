@@ -1,4 +1,4 @@
-<div id="directory-app" data-kind="{{ $kind }}" data-endpoint="{{ $endpoint }}" data-add-url="{{ route('ajax.directory.add') }}">
+<div id="directory-app" data-kind="{{ $kind }}" data-endpoint="{{ $endpoint }}" data-add-url="{{ route('ajax.directory.add') }}" data-human-status-url="{{ route('ajax.directory.human-status') }}" data-human-verify-url="{{ route('ajax.directory.human-verify') }}" data-detail-base="{{ url('/ajax/directory') }}">
     <div class="mb-9 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
         <div><p class="eyebrow">Media directory</p><h1 class="page-title mt-2">{{ $heading }}</h1><p class="lede mt-3 max-w-3xl">{{ $description }}</p></div>
         <p class="border-y border-stone-500 py-2 text-sm italic text-stone-600 dark:text-stone-300"><span id="directory-count">—</span> records found<br><span class="text-xs not-italic">Browse the first 990 matches</span></p>
@@ -21,3 +21,23 @@
     <div id="directory-pagination" class="mt-8 flex items-center justify-between border-t border-stone-500 pt-5"></div>
     <template id="contact-options">@foreach($contactLists as $list)<option value="{{ $list->id }}">{{ $list->name }}</option>@endforeach</template>
 </div>
+
+<dialog id="human-check-dialog" class="modal">
+    <div class="modal-body">
+        <p class="eyebrow">A quick privacy check</p>
+        <h2 class="mt-2 text-3xl font-black">Are you human?</h2>
+        <p class="mt-4 leading-7 text-stone-600 dark:text-stone-300">Contact details are kept behind an active signed-in session. Use your mouse or pointer to slide the marker fully to the right. You will only be asked once during this session.</p>
+        <label class="label mt-7" for="human-slider">Slide to confirm</label>
+        <input id="human-slider" class="w-full accent-red-900" type="range" min="0" max="100" value="0" aria-describedby="human-check-progress">
+        <div class="mt-2 flex justify-between text-xs font-bold uppercase tracking-wider"><span id="human-check-progress">0%</span><span>Human</span></div>
+        <p id="human-check-error" class="field-error min-h-6" role="alert"></p>
+        <div class="mt-6 flex justify-end gap-3"><button class="button-secondary" type="button" data-human-cancel>Cancel</button><button class="button-primary" type="button" data-human-submit disabled>Open contact</button></div>
+    </div>
+</dialog>
+
+<dialog id="directory-detail-dialog" class="modal w-[min(94vw,56rem)]">
+    <div class="modal-body">
+        <div class="flex items-start justify-between gap-4"><div><p class="eyebrow" data-detail-kind>Media contact</p><h2 class="mt-2 text-3xl font-black" data-detail-name></h2></div><button class="button-secondary shrink-0" type="button" data-detail-close>Close</button></div>
+        <div class="mt-7" data-detail-content></div>
+    </div>
+</dialog>
