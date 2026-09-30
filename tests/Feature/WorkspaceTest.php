@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class WorkspaceTest extends TestCase
@@ -153,15 +154,78 @@ class WorkspaceTest extends TestCase
 
         $release = $this->actingAs($user)->postJson('/ajax/press-releases', [
             'subject' => 'A clear headline', 'content' => 'A useful press release.', 'folder_id' => $pressFolder->id,
+            'release_type' => 'release', 'distribution' => 'outreach', 'template_key' => 'blank',
         ])->assertCreated()->json('data');
         $this->actingAs($other)->putJson('/ajax/press-releases/'.$release['id'], [
             'subject' => 'Changed', 'content' => 'No.', 'folder_id' => $pressFolder->id,
+            'release_type' => 'release', 'distribution' => 'outreach', 'template_key' => 'blank',
         ])->assertNotFound();
 
         $room = $this->actingAs($user)->postJson('/ajax/news-rooms', [
             'subject' => 'Company bulletin', 'summary' => 'The short version.', 'content' => 'The complete story.', 'folder_id' => $roomFolder->id,
         ])->assertCreated()->json('data');
         $this->actingAs($other)->deleteJson('/ajax/news-rooms/'.$room['id'])->assertNotFound();
+    }
+
+    public function test_release_creation_uses_a_full_page_author_template_editor(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('releases.start'))
+            ->assertOk()->assertSee('Author templates')->assertSee('Review-copy pitch');
+        $this->actingAs($user)->get(route('releases.create', ['template' => 'book-launch']))
+            ->assertOk()->assertSee('New book announcement')->assertSee('FOR IMMEDIATE RELEASE')
+            ->assertDontSee('release-dialog');
+    }
+
+    public function test_release_can_target_a_list_and_publish_to_newsroom(): void
+    {
+        $user = User::factory()->create();
+        $folder = DB::table('press_releases_folder')->where('user_id', $user->id)->where('folder_name', 'Draft')->first();
+        $listId = DB::table('contact_list')->insertGetId(['user_id' => $user->id, 'name' => 'Speculative fiction desks', 'description' => 'Book media']);
+
+        $release = $this->actingAs($user)->postJson('/ajax/press-releases', [
+            'subject' => 'A new novel crosses the dark between stars',
+            'content' => str_repeat('A detailed science-fiction announcement for readers and media. ', 4),
+            'folder_id' => $folder->id,
+            'release_type' => 'release',
+            'distribution' => 'both',
+            'template_key' => 'book-launch',
+            'analysis' => ['summary' => 'A novel about first contact.', 'release_type' => 'release', 'keywords' => ['Science Fiction'], 'media_angles' => ['First contact fiction']],
+            'recipients' => [['type' => 'list', 'id' => $listId, 'source' => 'manual']],
+        ])->assertCreated()->assertJsonPath('data.status', 'targeted')->json('data');
+
+        $this->assertDatabaseHas('press_release_recipients', ['press_release_id' => $release['id'], 'recipient_type' => 'list', 'recipient_id' => $listId]);
+        $this->assertNotNull($release['news_room_id']);
+        $this->assertDatabaseHas('news_rooms', ['id' => $release['news_room_id'], 'user_id' => $user->id, 'subject' => $release['subject']]);
+    }
+
+    public function test_openrouter_analysis_matches_ai_keywords_to_directory_topics(): void
+    {
+        Http::fake(['openrouter.ai/*' => Http::response([
+            'choices' => [['message' => ['content' => json_encode([
+                'summary' => 'A space-opera novel about memory and first contact.',
+                'release_type' => 'release',
+                'keywords' => ['Science Fiction', 'Space Exploration', 'First Contact'],
+                'media_angles' => ['The science behind speculative fiction', 'A new voice in space opera'],
+            ])]]],
+        ])]);
+        config(['services.openrouter.key' => 'test-key', 'services.openrouter.model' => 'openai/gpt-5.6-luna']);
+        $user = User::factory()->create();
+        $topicId = DB::table('prowly_topics')->insertGetId(['topic' => 'Science Fiction', 'record_count' => 1]);
+        $journalistId = DB::table('prowly_journalists')->insertGetId(['user_id' => $user->id, 'journalist_name' => 'Astra Quill', 'influence_score' => 800]);
+        DB::table('prowly_topic_list')->insert(['journalist_id' => $journalistId, 'topic_id' => $topicId]);
+
+        $this->actingAs($user)->postJson(route('press-releases.analyze'), [
+            'subject' => 'New science-fiction novel explores first contact',
+            'content' => str_repeat('The novel follows an astronomer who receives a message from another civilization. ', 3),
+        ])->assertOk()
+            ->assertJsonPath('analysis.keywords.0', 'Science Fiction')
+            ->assertJsonPath('recommendations.journalists.0.name', 'Astra Quill');
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
+            && $request['model'] === 'openai/gpt-5.6-luna'
+            && $request->hasHeader('Authorization'));
     }
 
     public function test_public_newsroom_uses_a_friendly_slug_and_redirects_the_legacy_name_url(): void

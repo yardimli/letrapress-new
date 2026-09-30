@@ -14,7 +14,8 @@ class ProtectDemoAccount
         $isAllowedSessionAction = $request->routeIs(
             'logout',
             'demo.login',
-            'ajax.directory.human-verify'
+            'ajax.directory.human-verify',
+            'press-releases.analyze'
         );
 
         if ($request->user()?->is_demo && $isWrite && ! $isAllowedSessionAction) {

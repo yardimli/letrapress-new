@@ -7,6 +7,7 @@ use App\Models\Journalist;
 use App\Models\NewsRoom;
 use App\Models\Outlet;
 use App\Models\PressRelease;
+use App\Models\PressReleaseRecipient;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -74,13 +75,45 @@ class DemoSeeder extends Seeder
             ],
         ];
 
+        $this->seedLists($user);
+        $targetLists = ContactList::query()->where('user_id', $user->id)->orderBy('id')->get();
+
         foreach ($books as $order => $book) {
-            PressRelease::query()->updateOrCreate(
+            $targeted = $order < 3;
+            $release = PressRelease::query()->updateOrCreate(
                 ['user_id' => $user->id, 'subject' => $book['title'].' — '.$this->releaseHeadline($order)],
-                ['folder_id' => $pressFolder, 'content' => $book['release']."\n\nAbout the author\nDr. Elara Voss writes literary science fiction about memory, discovery, and the futures people build together. She is available for interviews, features, podcasts, and festival appearances."]
+                [
+                    'folder_id' => $pressFolder,
+                    'content' => $book['release']."\n\nAbout the author\nDr. Elara Voss writes literary science fiction about memory, discovery, and the futures people build together. She is available for interviews, features, podcasts, and festival appearances.",
+                    'release_type' => $order === 1 ? 'pitch' : 'release',
+                    'distribution' => $targeted ? 'both' : 'newsroom',
+                    'status' => $targeted ? 'targeted' : 'published',
+                    'template_key' => $order === 1 ? 'review-copy' : ($order === 3 ? 'rights-adaptation' : 'book-launch'),
+                    'analysis' => [
+                        'summary' => $book['summary'],
+                        'release_type' => $order === 1 ? 'pitch' : 'release',
+                        'keywords' => ['Science Fiction', 'Books', 'Space', 'Technology'],
+                        'media_angles' => ['Author interview', 'Science-fiction publishing news'],
+                    ],
+                    'recipient_count' => $targeted ? 1 : 0,
+                    'targeted_at' => $targeted ? now()->subDays(12 - $order) : null,
+                ]
             );
 
-            NewsRoom::query()->updateOrCreate(
+            PressReleaseRecipient::query()->where('press_release_id', $release->id)->delete();
+            if ($targeted && $targetLists->isNotEmpty()) {
+                $list = $targetLists[$order % $targetLists->count()];
+                PressReleaseRecipient::create([
+                    'press_release_id' => $release->id,
+                    'recipient_type' => 'list',
+                    'recipient_id' => $list->id,
+                    'source' => 'manual',
+                    'match_score' => 90 - ($order * 4),
+                    'match_reason' => 'Demo targeting based on science-fiction and book coverage.',
+                ]);
+            }
+
+            $room = NewsRoom::query()->updateOrCreate(
                 ['user_id' => $user->id, 'subject' => $book['title']],
                 [
                     'folder_id' => $newsFolder,
@@ -91,9 +124,9 @@ class DemoSeeder extends Seeder
                     'date' => $book['date'],
                 ]
             );
+            $release->forceFill(['news_room_id' => $room->id])->save();
         }
 
-        $this->seedLists($user);
     }
 
     private function folder(string $table, int $userId, string $name): int

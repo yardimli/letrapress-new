@@ -36,6 +36,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/apps-outlet-list', [DirectoryController::class, 'outletsPage'])->name('outlets.page');
     Route::get('/apps-contact-list-inbox', [ContactListController::class, 'page'])->name('contacts.page');
     Route::get('/apps-press-releases', [PressReleaseController::class, 'page'])->name('releases.page');
+    Route::get('/apps-press-releases/start', [PressReleaseController::class, 'start'])->name('releases.start');
+    Route::get('/apps-press-releases/create', [PressReleaseController::class, 'create'])->name('releases.create');
+    Route::get('/apps-press-releases/{pressRelease}/edit', [PressReleaseController::class, 'edit'])->name('releases.edit');
     Route::get('/apps-news-rooms', [NewsRoomController::class, 'page'])->name('newsrooms.page');
 
     Route::prefix('ajax')->group(function () {
@@ -48,6 +51,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/directory/contact-list', [DirectoryController::class, 'addToList'])->name('ajax.directory.add');
         Route::apiResource('contact-lists', ContactListController::class)->parameters(['contact-lists' => 'contactList']);
         Route::delete('/contact-lists/{contactList}/member', [ContactListController::class, 'detach'])->name('contact-lists.detach');
+        Route::post('/press-releases/analyze', [PressReleaseController::class, 'analyze'])->middleware('throttle:12,1')->name('press-releases.analyze');
         Route::apiResource('press-releases', PressReleaseController::class)->except('show')->parameters(['press-releases' => 'pressRelease']);
         Route::apiResource('news-rooms', NewsRoomController::class)->except('show')->parameters(['news-rooms' => 'newsRoom']);
     });
