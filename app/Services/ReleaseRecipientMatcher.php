@@ -71,6 +71,7 @@ class ReleaseRecipientMatcher
             'kind' => $kind,
             'id' => $record->id,
             'name' => $kind === 'journalist' ? $record->journalist_name : $record->outlet_name,
+            'picture_url' => $kind === 'journalist' ? $record->journalist_picture_url : $record->outlet_picture_url,
             'role' => $kind === 'journalist' ? $record->j_title?->title : $record->j_media_types?->outlet_type,
             'country' => $record->j_countries?->country,
             'influence_score' => $record->influence_score,

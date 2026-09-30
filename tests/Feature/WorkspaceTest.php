@@ -175,6 +175,7 @@ class WorkspaceTest extends TestCase
             ->assertOk()->assertSee('Author templates')->assertSee('Review-copy pitch');
         $this->actingAs($user)->get(route('releases.create', ['template' => 'book-launch']))
             ->assertOk()->assertSee('New book announcement')->assertSee('FOR IMMEDIATE RELEASE')
+            ->assertSee('recommendation-detail-dialog')->assertSee(route('ajax.directory.human-status'))
             ->assertDontSee('release-dialog');
     }
 
@@ -213,7 +214,7 @@ class WorkspaceTest extends TestCase
         config(['services.openrouter.key' => 'test-key', 'services.openrouter.model' => 'openai/gpt-5.6-luna']);
         $user = User::factory()->create();
         $topicId = DB::table('prowly_topics')->insertGetId(['topic' => 'Science Fiction', 'record_count' => 1]);
-        $journalistId = DB::table('prowly_journalists')->insertGetId(['user_id' => $user->id, 'journalist_name' => 'Astra Quill', 'influence_score' => 800]);
+        $journalistId = DB::table('prowly_journalists')->insertGetId(['user_id' => $user->id, 'journalist_name' => 'Astra Quill', 'journalist_picture_url' => 'https://images.example/astra.jpg', 'influence_score' => 800]);
         DB::table('prowly_topic_list')->insert(['journalist_id' => $journalistId, 'topic_id' => $topicId]);
 
         $this->actingAs($user)->postJson(route('press-releases.analyze'), [
@@ -221,7 +222,8 @@ class WorkspaceTest extends TestCase
             'content' => str_repeat('The novel follows an astronomer who receives a message from another civilization. ', 3),
         ])->assertOk()
             ->assertJsonPath('analysis.keywords.0', 'Science Fiction')
-            ->assertJsonPath('recommendations.journalists.0.name', 'Astra Quill');
+            ->assertJsonPath('recommendations.journalists.0.name', 'Astra Quill')
+            ->assertJsonPath('recommendations.journalists.0.picture_url', 'https://images.example/astra.jpg');
 
         Http::assertSent(fn ($request) => $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
             && $request['model'] === 'openai/gpt-5.6-luna'

@@ -8,7 +8,7 @@
     $releaseType = $release?->release_type ?? $template['type'];
     $distribution = $release?->distribution ?? 'both';
 @endphp
-<div id="release-editor" data-save-url="{{ $release ? route('press-releases.update', $release) : route('press-releases.store') }}" data-save-method="{{ $release ? 'PUT' : 'POST' }}" data-analyze-url="{{ route('press-releases.analyze') }}" data-list-url="{{ route('releases.page') }}" data-readonly="{{ auth()->user()->is_demo ? 'true' : 'false' }}">
+<div id="release-editor" data-save-url="{{ $release ? route('press-releases.update', $release) : route('press-releases.store') }}" data-save-method="{{ $release ? 'PUT' : 'POST' }}" data-analyze-url="{{ route('press-releases.analyze') }}" data-list-url="{{ route('releases.page') }}" data-human-status-url="{{ route('ajax.directory.human-status') }}" data-human-verify-url="{{ route('ajax.directory.human-verify') }}" data-detail-base="{{ url('/ajax/directory') }}" data-readonly="{{ auth()->user()->is_demo ? 'true' : 'false' }}">
     <script id="release-analysis-data" type="application/json">@json($release?->analysis)</script>
     <script id="release-recipient-data" type="application/json">@json($selectedRecipients)</script>
     <div class="mb-8 flex flex-col justify-between gap-4 border-b-4 border-double border-stone-800 pb-6 dark:border-stone-300 sm:flex-row sm:items-end"><div><a class="button-quiet" href="{{ route('releases.page') }}">← Back to pitches &amp; releases</a><p class="eyebrow mt-5">{{ $release ? 'Revise the copy' : 'New from template' }}</p><h1 class="page-title mt-2">{{ $release ? 'Edit pitch or release' : $template['name'] }}</h1></div><div class="flex gap-3"><span class="badge" data-save-state>{{ $release?->status ?? 'Unsaved draft' }}</span><button class="button-primary" type="button" data-release-save>Save draft</button></div></div>
@@ -39,4 +39,22 @@
         </aside>
     </form>
 </div>
+<dialog id="recommendation-human-dialog" class="modal">
+    <div class="modal-body">
+        <p class="eyebrow">A quick privacy check</p>
+        <h2 class="mt-2 text-3xl font-black">Are you human?</h2>
+        <p class="mt-4 leading-7 text-stone-600 dark:text-stone-300">Contact details are kept behind an active signed-in session. Use your mouse or pointer to slide the marker fully to the right. You will only be asked once during this session.</p>
+        <label class="label mt-7" for="recommendation-human-slider">Slide to confirm</label>
+        <input id="recommendation-human-slider" class="w-full accent-red-900" type="range" min="0" max="100" value="0" aria-describedby="recommendation-human-progress">
+        <div class="mt-2 flex justify-between text-xs font-bold uppercase tracking-wider"><span id="recommendation-human-progress">0%</span><span>Human</span></div>
+        <p id="recommendation-human-error" class="field-error min-h-6" role="alert"></p>
+        <div class="mt-6 flex justify-end gap-3"><button class="button-secondary" type="button" data-recommendation-human-cancel>Cancel</button><button class="button-primary" type="button" data-recommendation-human-submit disabled>Open contact</button></div>
+    </div>
+</dialog>
+<dialog id="recommendation-detail-dialog" class="modal w-[min(94vw,56rem)]">
+    <div class="modal-body">
+        <div class="flex items-start justify-between gap-4"><div><p class="eyebrow" data-recommendation-detail-kind>Media contact</p><h2 class="mt-2 text-3xl font-black" data-recommendation-detail-name></h2></div><button class="button-secondary shrink-0" type="button" data-recommendation-detail-close>Close</button></div>
+        <div class="mt-7" data-recommendation-detail-content></div>
+    </div>
+</dialog>
 @endsection
