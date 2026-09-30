@@ -11,7 +11,11 @@ class ProtectDemoAccount
     public function handle(Request $request, Closure $next): Response
     {
         $isWrite = ! in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true);
-        $isAllowedSessionAction = $request->routeIs('logout', 'demo.login');
+        $isAllowedSessionAction = $request->routeIs(
+            'logout',
+            'demo.login',
+            'ajax.directory.human-verify'
+        );
 
         if ($request->user()?->is_demo && $isWrite && ! $isAllowedSessionAction) {
             $message = 'This is a read-only demo. Changes are disabled.';

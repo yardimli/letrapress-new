@@ -40,6 +40,18 @@ class DemoAccessTest extends TestCase
         $this->assertDatabaseMissing('contact_list', ['name' => 'A forbidden change']);
     }
 
+    public function test_demo_user_can_complete_the_session_only_human_check(): void
+    {
+        $demo = User::factory()->create(['is_demo' => true, 'email_verified_at' => now()]);
+
+        $this->actingAs($demo)
+            ->postJson(route('ajax.directory.human-verify'), ['slider' => 100])
+            ->assertOk()
+            ->assertJsonPath('verified', true);
+
+        $this->assertTrue(session('directory_human_verified'));
+    }
+
     public function test_demo_user_can_log_out(): void
     {
         $demo = User::factory()->create(['is_demo' => true, 'email_verified_at' => now()]);
